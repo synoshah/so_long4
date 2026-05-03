@@ -1,0 +1,91 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   map_bonus.c                                        :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: synoshah <synoshah@student.42abudhabi.a    +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2026/05/03 13:08:34 by synoshah          #+#    #+#             */
+/*   Updated: 2026/05/03 13:08:36 by synoshah         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
+#include "so_long_bonus.h"
+
+static size_t	sanitize_line(char *line)
+{
+	size_t	len;
+
+	len = ft_strlen(line);
+	while (len > 0 && (line[len - 1] == '\n' || line[len - 1] == '\r'))
+		line[--len] = 0;
+	return (len);
+}
+
+static char	**grow_map(char **map, size_t n)
+{
+	char	**new_map;
+	size_t	i;
+
+	new_map = malloc(sizeof(char *) * (n + 2));
+	if (!new_map)
+		return (NULL);
+	i = 0;
+	while (i < n)
+	{
+		new_map[i] = map[i];
+		i++;
+	}
+	new_map[i] = NULL;
+	free(map);
+	return (new_map);
+}
+
+static void	map_error(char *line, int fd, char **map, const char *msg)
+{
+	free(line);
+	close(fd);
+	free_map(map);
+	error_exit(msg);
+}
+
+static char	**append_line(char **map, size_t *n, char *line, int fd)
+{
+	char	**tmp;
+
+	if (sanitize_line(line) == 0)
+		map_error(line, fd, map, "Empty line in map");
+	tmp = grow_map(map, *n);
+	if (!tmp)
+		map_error(line, fd, map, "malloc failed");
+	map = tmp;
+	map[*n] = line;
+	(*n)++;
+	map[*n] = NULL;
+	return (map);
+}
+
+void	read_map(t_data *game, char *file)
+{
+	int		fd;
+	char	**map;
+	size_t	n;
+	char	*line;
+
+	n = 0;
+	map = NULL;
+	fd = open(file, O_RDONLY);
+	if (fd < 0)
+		error_exit("Error opening file");
+	line = get_next_line(fd);
+	while (line)
+	{
+		map = append_line(map, &n, line, fd);
+		line = get_next_line(fd);
+	}
+	close(fd);
+	if (n == 0)
+		error_exit("empty map");
+	game->map = map;
+	validate_setup(game, file);
+}
